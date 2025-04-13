@@ -77,6 +77,10 @@
         .message-warning {
             @apply bg-yellow-100 text-yellow-700;
         }
+        /* Scanner Modal specific styles */
+        #qrScannerModalContent {
+             max-width: 500px; /* Limit scanner modal width */
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -145,10 +149,7 @@
                     <button id="tabCreateEvent" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
                         Create Event
                     </button>
-                    <button id="tabScanQR" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                        Scan QR
-                    </button>
-                </nav>
+                    </nav>
             </div>
 
             <div id="eventsView">
@@ -197,27 +198,8 @@
                 </form>
             </div>
 
-            <div id="scanQrView" class="hidden">
-                <h3 class="text-xl font-semibold mb-3 text-gray-700">Scan Member QR Code</h3>
-                 <div class="mb-4">
-                    <label for="scanEventSelect" class="block text-sm font-medium text-gray-700">Select Active Event for Check-in/Out</label>
-                    <select id="scanEventSelect" class="select-field">
-                        <option value="">-- Select Event --</option>
-                        </select>
-                </div>
-                <div id="scannerContainer" class="relative border border-gray-300 rounded-md overflow-hidden aspect-video bg-black flex items-center justify-center">
-                    <video id="scannerVideo" playsinline class="no-scrollbar"></video>
-                    <canvas id="qrScannerCanvas"></canvas> <div class="absolute inset-0 border-4 border-red-500 opacity-75" style="clip-path: polygon(0% 0%, 0% 100%, 25% 100%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 100%, 100% 100%, 100% 0%);"></div>
-                     <p id="scannerMessage" class="absolute bottom-2 left-2 right-2 text-white bg-black bg-opacity-50 p-1 rounded text-xs text-center">Align QR code within the red box</p>
-                </div>
-                <button id="startScanBtn" class="btn btn-primary w-full mt-4">Start Scanner</button>
-                <button id="stopScanBtn" class="btn btn-danger w-full mt-2 hidden">Stop Scanner</button>
-                <div id="scanResult" class="mt-4 text-center"></div>
-            </div>
-
             <div id="eventDetailsModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center z-50">
-                <div class="relative mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white">
-                    <div class="flex justify-between items-center border-b pb-3 mb-3">
+                <div class="relative mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white"> <div class="flex justify-between items-center border-b pb-3 mb-3">
                         <h3 class="text-xl font-semibold text-gray-900" id="modalEventName">Event Details</h3>
                         <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600">
                             <i class="fas fa-times fa-lg"></i>
@@ -225,20 +207,26 @@
                     </div>
                     <div id="modalContent" class="max-h-[70vh] overflow-y-auto">
                         <p id="modalEventInfo" class="text-sm text-gray-600 mb-4"></p>
+
+                        <div class="mb-4 flex flex-wrap gap-2 items-center">
+                             <button id="scanFromModalBtn" class="btn btn-success"><i class="fas fa-qrcode mr-1"></i> Scan QR for Check-In/Out</button>
+                             <input type="text" id="participantSearch" placeholder="Search Participants..." class="input-field flex-grow sm:flex-grow-0 sm:w-auto">
+                        </div>
+
+
                         <h4 class="text-lg font-semibold mb-2 text-gray-800">Participants</h4>
-                         <div class="mb-3">
-                            <input type="text" id="participantSearch" placeholder="Search by Name or SAR#" class="input-field">
-                         </div>
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                        <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SAR#</th>
-                                        <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-In</th>
-                                        <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-Out</th>
-                                        <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
+                                        <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SAR#</th>
+                                        <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Aid</th>
+                                        <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                                        <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-In</th>
+                                        <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-Out</th>
+                                        <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
                                     </tr>
                                 </thead>
                                 <tbody id="participantsTableBody" class="bg-white divide-y divide-gray-200">
@@ -250,7 +238,6 @@
                     <div class="mt-4 pt-4 border-t flex flex-wrap gap-2 justify-end">
                         <button id="exportCsvBtn" class="btn btn-secondary"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
                         <button id="exportPdfBtn" class="btn btn-secondary"><i class="fas fa-file-pdf mr-1"></i> Export PDF</button>
-                        <button id="emailReportBtn" class="btn btn-secondary"><i class="fas fa-envelope mr-1"></i> Email Report</button>
                         <button id="closeEventBtn" class="btn btn-warning"><i class="fas fa-door-closed mr-1"></i> Close Event</button>
                         <button id="deleteEventBtn" class="btn btn-danger"><i class="fas fa-trash mr-1"></i> Delete Event</button>
                     </div>
@@ -268,6 +255,24 @@
                 </div>
             </div>
 
+            <div id="qrScannerModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 overflow-y-auto h-full w-full items-center justify-center z-[60]"> <div id="qrScannerModalContent" class="relative mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+                     <div class="flex justify-between items-center border-b pb-3 mb-3">
+                        <h3 class="text-xl font-semibold text-gray-900">Scan Member QR</h3>
+                        <button id="closeScannerModalBtn" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times fa-lg"></i>
+                        </button>
+                    </div>
+                     <div id="scannerContainer" class="relative border border-gray-300 rounded-md overflow-hidden aspect-video bg-black flex items-center justify-center">
+                         <video id="scannerVideo" playsinline class="no-scrollbar"></video>
+                         <canvas id="qrScannerCanvas"></canvas> <div class="absolute inset-0 border-4 border-red-500 opacity-75" style="clip-path: polygon(0% 0%, 0% 100%, 25% 100%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 100%, 100% 100%, 100% 0%);"></div>
+                         <p id="scannerMessage" class="absolute bottom-2 left-2 right-2 text-white bg-black bg-opacity-50 p-1 rounded text-xs text-center">Align QR code within the red box</p>
+                     </div>
+                     <div class="mt-4 flex justify-center">
+                         <button id="stopScanBtn" class="btn btn-danger">Stop Scanner</button>
+                     </div>
+                 </div>
+            </div>
+
         </section>
 
     </main>
@@ -278,7 +283,6 @@
         const DB_VERSION = 1; // Increment DB version if schema changes
         const USER_STORE_NAME = 'userProfile'; // For LocalStorage
         const EVENTS_STORE_NAME = 'events';
-        // const PARTICIPANTS_STORE_NAME = 'participants'; // Keeping participants embedded in events for now
 
         let db; // IndexedDB database instance
         let qrCodeInstance = null; // qrcode.js instance
@@ -306,7 +310,7 @@
         const adminMessage = document.getElementById('adminMessage');
         const tabEvents = document.getElementById('tabEvents');
         const tabCreateEvent = document.getElementById('tabCreateEvent');
-        const tabScanQR = document.getElementById('tabScanQR');
+        // Scan QR Tab Removed
 
         // Admin App - Events View
         const eventsView = document.getElementById('eventsView');
@@ -322,16 +326,7 @@
         const eventLongitudeInput = document.getElementById('eventLongitude');
         const locationStatus = document.getElementById('locationStatus');
 
-        // Admin App - Scan QR View
-        const scanQrView = document.getElementById('scanQrView');
-        const scanEventSelect = document.getElementById('scanEventSelect');
-        const scannerContainer = document.getElementById('scannerContainer');
-        const scannerVideo = document.getElementById('scannerVideo');
-        const qrScannerCanvas = document.getElementById('qrScannerCanvas');
-        const startScanBtn = document.getElementById('startScanBtn');
-        const stopScanBtn = document.getElementById('stopScanBtn');
-        const scanResult = document.getElementById('scanResult');
-        const scannerMessage = document.getElementById('scannerMessage');
+        // Admin App - Scan QR View (Removed)
 
         // Event Details Modal
         const eventDetailsModal = document.getElementById('eventDetailsModal');
@@ -343,9 +338,10 @@
         const participantSearch = document.getElementById('participantSearch');
         const exportCsvBtn = document.getElementById('exportCsvBtn');
         const exportPdfBtn = document.getElementById('exportPdfBtn');
-        const emailReportBtn = document.getElementById('emailReportBtn');
+        // Email Button Removed
         const closeEventBtn = document.getElementById('closeEventBtn');
         const deleteEventBtn = document.getElementById('deleteEventBtn');
+        const scanFromModalBtn = document.getElementById('scanFromModalBtn'); // Button to open scanner
 
         // Checkout Confirm Modal
         const checkoutConfirmModal = document.getElementById('checkoutConfirmModal');
@@ -353,6 +349,15 @@
         const cancelCheckoutBtn = document.getElementById('cancelCheckoutBtn');
         const confirmCheckoutBtn = document.getElementById('confirmCheckoutBtn');
         let userToCheckOut = null; // Store user data for checkout confirmation
+
+        // QR Scanner Modal
+        const qrScannerModal = document.getElementById('qrScannerModal');
+        const closeScannerModalBtn = document.getElementById('closeScannerModalBtn');
+        const scannerContainer = document.getElementById('scannerContainer'); // Now inside scanner modal
+        const scannerVideo = document.getElementById('scannerVideo');
+        const qrScannerCanvas = document.getElementById('qrScannerCanvas');
+        const scannerMessage = document.getElementById('scannerMessage');
+        const stopScanBtn = document.getElementById('stopScanBtn'); // Now inside scanner modal
 
 
         // --- Utility Functions ---
@@ -738,21 +743,20 @@
 
         /**
          * Switches between Admin App tabs/views.
-         * @param {string} targetViewId - The ID of the view to show ('eventsView', 'createEventView', 'scanQrView').
+         * @param {string} targetViewId - The ID of the view to show ('eventsView', 'createEventView').
          */
         function switchAdminView(targetViewId) {
             // Hide all views
             eventsView.classList.add('hidden');
             createEventView.classList.add('hidden');
-            scanQrView.classList.add('hidden');
+            // scanQrView removed
 
             // Deactivate all tabs
             tabEvents.classList.remove('border-indigo-500', 'text-indigo-600');
             tabEvents.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
             tabCreateEvent.classList.remove('border-indigo-500', 'text-indigo-600');
             tabCreateEvent.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
-            tabScanQR.classList.remove('border-indigo-500', 'text-indigo-600');
-            tabScanQR.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            // tabScanQR removed
 
             // Show target view and activate corresponding tab
             const targetView = document.getElementById(targetViewId);
@@ -761,7 +765,7 @@
                 targetView.classList.remove('hidden');
                 if (targetViewId === 'eventsView') targetTab = tabEvents;
                 else if (targetViewId === 'createEventView') targetTab = tabCreateEvent;
-                else if (targetViewId === 'scanQrView') targetTab = tabScanQR;
+                // scanQrView removed
 
                 if (targetTab) {
                     targetTab.classList.add('border-indigo-500', 'text-indigo-600');
@@ -771,8 +775,8 @@
                  hideMessage(adminMessage); // Clear messages on view switch
             }
 
-            // Stop scanner if navigating away from scan view
-             if (targetViewId !== 'scanQrView' && videoStream) {
+            // Stop scanner if navigating away from admin app (or closing scanner modal)
+             if (videoStream) {
                  stopScanner();
              }
         }
@@ -784,7 +788,7 @@
             const filterValue = eventFilter.value;
             activeEventsList.innerHTML = ''; // Clear lists
             pastEventsList.innerHTML = '';
-            scanEventSelect.innerHTML = '<option value="">-- Select Event --</option>'; // Clear and reset scanner dropdown
+            // scanEventSelect removed
 
             try {
                 // Fetch all events first
@@ -800,11 +804,7 @@
                         pastEvents.push(event);
                     } else {
                         activeEvents.push(event);
-                        // Populate scanner dropdown only with active events
-                        const option = document.createElement('option');
-                        option.value = event.id;
-                        option.textContent = `${event.eventName} (${event.eventType})`;
-                        scanEventSelect.appendChild(option);
+                        // No need to populate scanEventSelect anymore
                     }
                 });
 
@@ -995,19 +995,17 @@
             }
         }
 
-        // --- QR Code Scanning Logic ---
+        // --- QR Code Scanning Logic (Now triggered from Event Details Modal) ---
 
         /**
-         * Starts the QR code scanner.
+         * Opens the QR Scanner Modal and starts the scanner.
+         * Assumes currentEditEventId is set.
          */
-        async function startScanner() {
-            hideMessage(adminMessage);
-            scanResult.textContent = '';
-            const selectedEventId = scanEventSelect.value;
-
-            if (!selectedEventId) {
-                showMessage(adminMessage, 'Please select an active event first.', 'warning');
-                return;
+        async function openAndStartScanner() {
+            hideMessage(adminMessage); // Clear main message area
+            if (currentEditEventId === null) {
+                 showMessage(adminMessage, 'Cannot scan: No event selected.', 'error');
+                 return;
             }
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1015,8 +1013,9 @@
                  return;
             }
 
-            startScanBtn.classList.add('hidden');
-            stopScanBtn.classList.remove('hidden');
+            // Show the scanner modal
+            qrScannerModal.classList.add('active');
+            // stopScanBtn.classList.remove('hidden'); // Stop button is always visible in modal now
             scannerMessage.textContent = 'Initializing camera...';
 
             try {
@@ -1036,15 +1035,14 @@
                      qrScannerCanvas.height = scannerVideo.videoHeight;
                      qrScannerCanvas.width = scannerVideo.videoWidth;
                      // Start scanning loop
-                     if (!scanInterval) { // Prevent multiple intervals if clicked quickly
-                        scanInterval = requestAnimationFrame(tick); // Use requestAnimationFrame for smoother performance
+                     if (!scanInterval) { // Prevent multiple intervals
+                        scanInterval = requestAnimationFrame(tick); // Use requestAnimationFrame
                      }
                  };
                  // Handle cases where metadata might already be loaded
                  if (scannerVideo.readyState >= scannerVideo.HAVE_METADATA) {
                      scannerVideo.onloadedmetadata(); // Trigger manually if already loaded
                  }
-
 
             } catch (err) {
                 console.error("Error accessing camera:", err);
@@ -1056,13 +1054,14 @@
                  } else if (err.name === "NotReadableError") {
                      errMsg += " Camera might be in use by another application.";
                  }
+                 // Show error in the main admin message area as scanner modal might close
                  showMessage(adminMessage, errMsg, 'error');
-                 stopScanner(); // Clean up if start failed
+                 stopScanner(); // Clean up if start failed (will also hide modal)
             }
         }
 
         /**
-         * Stops the QR code scanner and releases the camera.
+         * Stops the QR code scanner, releases the camera, and hides the scanner modal.
          */
         function stopScanner() {
             if (scanInterval) {
@@ -1074,11 +1073,10 @@
                 videoStream = null;
                 if (scannerVideo) scannerVideo.srcObject = null; // Clear video source
             }
-            startScanBtn.classList.remove('hidden');
-            stopScanBtn.classList.add('hidden');
-            if (scannerMessage) scannerMessage.textContent = 'Scanner stopped.';
-            // Keep scan result visible? Optional.
-            // scanResult.textContent = '';
+            // Hide the scanner modal
+            if(qrScannerModal) qrScannerModal.classList.remove('active');
+            // Reset scanner message (optional)
+            // if (scannerMessage) scannerMessage.textContent = 'Scanner stopped.';
         }
 
         /**
@@ -1086,21 +1084,22 @@
          */
         function tick() {
             // Ensure video and stream are still active before proceeding
-            if (!videoStream || !scannerVideo || scannerVideo.readyState < scannerVideo.HAVE_ENOUGH_DATA) {
-                // If stream stopped or video not ready, request next frame and exit
-                if (videoStream && !scanInterval) { // Check if interval needs restarting
-                    scanInterval = requestAnimationFrame(tick);
+             if (!videoStream || !scannerVideo || scannerVideo.readyState < scannerVideo.HAVE_ENOUGH_DATA) {
+                // If stream stopped or video not ready, request next frame if stream exists
+                if (videoStream && scanInterval) { // Only request if scanning should be active
+                     scanInterval = requestAnimationFrame(tick);
+                } else {
+                    scanInterval = null; // Ensure interval is cleared if stream is gone
                 }
                 return;
             }
 
             // Set interval for next frame *before* processing current one
-            // This ensures continuous scanning even if processing takes time
             scanInterval = requestAnimationFrame(tick);
 
 
             const canvasContext = qrScannerCanvas.getContext("2d", { willReadFrequently: true }); // Optimize for frequent reads
-             // Ensure canvas dimensions match video, might change if device rotates or camera changes
+             // Ensure canvas dimensions match video
              if (qrScannerCanvas.width !== scannerVideo.videoWidth || qrScannerCanvas.height !== scannerVideo.videoHeight) {
                 qrScannerCanvas.width = scannerVideo.videoWidth;
                 qrScannerCanvas.height = scannerVideo.videoHeight;
@@ -1111,14 +1110,14 @@
 
             try {
                 const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                    inversionAttempts: "dontInvert", // Or "attemptBoth" if needed
+                    inversionAttempts: "dontInvert",
                 });
 
                 if (code && code.data) { // Check if code and data exist
                     // --- QR Code Found ---
                     scannerMessage.textContent = 'QR Code Detected!';
-                    // Stop scanner *before* processing to prevent multiple scans of same code
-                    stopScanner();
+                    // Stop scanner *before* processing to prevent multiple scans
+                    stopScanner(); // This will also hide the scanner modal
                     // Process the data asynchronously
                     handleScannedData(code.data);
                     // No need to request another frame here, scanner is stopped
@@ -1127,26 +1126,26 @@
                      scannerMessage.textContent = 'Scanning... Align QR code within the red box';
                 }
             } catch (e) {
-                // jsQR might throw errors on certain inputs
                 console.error("jsQR error during scanning:", e);
                 scannerMessage.textContent = 'Error during scan processing.';
-                // Continue scanning? Or stop? Continue for now.
             }
 
         }
 
         /**
          * Processes the data obtained from the scanned QR code.
+         * Uses currentEditEventId implicitly.
+         * Refreshes the participant list in the Event Details modal upon completion.
          * @param {string} qrData - The string data from the QR code.
          */
         async function handleScannedData(qrData) {
-            scanResult.textContent = `Processing QR data...`;
-            hideMessage(adminMessage);
-            const selectedEventId = parseInt(scanEventSelect.value, 10); // Ensure it's a number
+            // scanResult removed
+            hideMessage(adminMessage); // Clear main message area first
+            const selectedEventId = currentEditEventId; // Use the ID from the open modal
 
-            if (!selectedEventId || isNaN(selectedEventId)) {
-                 showMessage(adminMessage, 'Error: No valid event selected for check-in.', 'error');
-                 scanResult.textContent = 'Error: No event selected.';
+            if (selectedEventId === null) {
+                 // This shouldn't happen if scan is only triggered from modal, but check anyway
+                 showMessage(adminMessage, 'Error: No event context for scanning.', 'error');
                  return;
             }
 
@@ -1157,31 +1156,30 @@
                 if (!userData || !userData.sarNumber || !userData.firstName || !userData.lastName) {
                     throw new Error("Invalid QR code data format.");
                 }
-                 scanResult.textContent = `QR Decoded: ${userData.firstName} ${userData.lastName} (SAR# ${userData.sarNumber})`;
+                 // Show processing message briefly in main area
+                 showMessage(adminMessage, `Processing QR for: ${userData.firstName} ${userData.lastName} (SAR# ${userData.sarNumber})...`, 'info', 2000);
 
             } catch (error) {
                 console.error("Error parsing QR data:", error);
                  showMessage(adminMessage, 'Invalid QR code data. Please scan a valid user QR code.', 'error');
-                 scanResult.textContent = 'Error: Invalid QR code.';
                  return;
             }
 
             // --- Check-in/Check-out Logic ---
+            let successMessage = ''; // Store success message to show after refresh
             try {
                 const event = await getItem(EVENTS_STORE_NAME, selectedEventId);
                 if (!event) {
                      showMessage(adminMessage, `Error: Event with ID ${selectedEventId} not found.`, 'error');
-                     scanResult.textContent = 'Error: Event not found.';
                      return;
                 }
                  if (event.closed) {
                     showMessage(adminMessage, `Event "${event.eventName}" is closed. Cannot check in/out.`, 'warning');
-                    scanResult.textContent = 'Event is closed.';
                     return;
                 }
 
 
-                const existingParticipantIndex = event.participants.findIndex(p => p.sarNumber === userData.sarNumber);
+                const existingParticipantIndex = event.participants.findIndex(p => p && p.sarNumber === userData.sarNumber); // Add check for p
                 let currentCoords = null;
 
                 // Try to get location for check-in/out
@@ -1198,13 +1196,15 @@
                     const participant = event.participants[existingParticipantIndex];
                     if (!participant.checkOutTime) {
                         // --- Already Checked In: Prompt for Check-Out ---
+                        // Need to show confirmation modal *after* scanner modal is closed
                         userToCheckOut = { eventId: selectedEventId, participantIndex: existingParticipantIndex, participantData: participant, location: currentCoords };
                         checkoutConfirmText.textContent = `Check out ${participant.firstName} ${participant.lastName} (SAR# ${participant.sarNumber})?`;
-                        checkoutConfirmModal.classList.add('active');
+                        checkoutConfirmModal.classList.add('active'); // Show confirmation
+                        // No success message here yet, handled by handleConfirmCheckout
 
                     } else {
-                        // --- Already Checked Out: Re-Check-In (Treat as new check-in) ---
-                         showMessage(adminMessage, `${userData.firstName} ${userData.lastName} was previously checked out. Checking them in again.`, 'info');
+                        // --- Already Checked Out: Re-Check-In ---
+                         successMessage = `${userData.firstName} ${userData.lastName} checked IN successfully (re-check-in).`;
                          const newParticipantRecord = {
                             ...userData, // Copy basic user info
                             checkInTime: new Date().toISOString(),
@@ -1213,13 +1213,12 @@
                             checkOutLocation: null,
                             totalHours: null // Reset hours
                          };
-                         event.participants.push(newParticipantRecord); // Add as a new entry for re-check-in
+                         event.participants.push(newParticipantRecord); // Add as a new entry
                          await updateItem(EVENTS_STORE_NAME, event);
-                         showMessage(adminMessage, `${userData.firstName} ${userData.lastName} checked IN successfully (re-check-in).`, 'success');
-                         scanResult.textContent = `${userData.firstName} checked IN (re-check-in).`;
                     }
                 } else {
                     // --- New Participant: Check-In ---
+                     successMessage = `${userData.firstName} ${userData.lastName} checked IN successfully.`;
                     const newParticipant = {
                         ...userData, // Copy all fields from QR
                         checkInTime: new Date().toISOString(),
@@ -1230,14 +1229,20 @@
                     };
                     event.participants.push(newParticipant);
                     await updateItem(EVENTS_STORE_NAME, event);
-                    showMessage(adminMessage, `${userData.firstName} ${userData.lastName} checked IN successfully.`, 'success');
-                    scanResult.textContent = `${userData.firstName} checked IN.`;
                 }
+
+                // Refresh the participant list in the details modal if not prompting for checkout
+                 if (!userToCheckOut) {
+                     await refreshParticipantsTableInModal(selectedEventId);
+                     if (successMessage) {
+                         showMessage(adminMessage, successMessage, 'success');
+                     }
+                 }
+
 
             } catch (error) {
                 console.error("Error during check-in/out process:", error);
                  showMessage(adminMessage, `Check-in/out failed: ${error}`, 'error');
-                 scanResult.textContent = 'Check-in/out failed.';
             }
         }
 
@@ -1259,16 +1264,17 @@
                  // Update the specific participant record
                  event.participants[participantIndex].checkOutTime = new Date().toISOString();
                  event.participants[participantIndex].checkOutLocation = location; // Record checkout location
-                 // Total hours will be calculated on display/export
 
                  await updateItem(EVENTS_STORE_NAME, event);
-                 showMessage(adminMessage, `${participantData.firstName} ${participantData.lastName} checked OUT successfully.`, 'success');
-                 scanResult.textContent = `${participantData.firstName} checked OUT.`; // Update scan result area too
+                 const successMsg = `${participantData.firstName} ${participantData.lastName} checked OUT successfully.`;
+
+                 // Refresh the table in the modal *after* successful update
+                 await refreshParticipantsTableInModal(eventId);
+                 showMessage(adminMessage, successMsg, 'success'); // Show success message
 
              } catch (error) {
                  console.error("Error during checkout confirmation:", error);
                  showMessage(adminMessage, `Checkout failed: ${error}`, 'error');
-                 scanResult.textContent = 'Checkout failed.';
              } finally {
                  // Clean up and close modal
                  userToCheckOut = null;
@@ -1278,6 +1284,25 @@
 
 
         // --- Event Details Modal Logic ---
+
+        /**
+         * Helper function to refresh the participant table in the currently open modal.
+         * @param {number} eventId - The ID of the event whose participants need refreshing.
+         */
+        async function refreshParticipantsTableInModal(eventId) {
+             if (currentEditEventId !== eventId) return; // Only refresh if the correct modal is open
+
+             try {
+                 const event = await getItem(EVENTS_STORE_NAME, eventId);
+                 if (event) {
+                     renderParticipantsTable(event.participants || [], participantSearch.value); // Re-render with current search term
+                 }
+             } catch (error) {
+                 console.error("Error refreshing participant table:", error);
+                 showMessage(adminMessage, "Could not refresh participant list.", "error");
+             }
+        }
+
 
         /**
          * Opens the event details modal and populates it with data.
@@ -1316,10 +1341,10 @@
 
                  // Update button states based on event status
                  closeEventBtn.disabled = event.closed;
-                 deleteEventBtn.disabled = false; // Allow deletion always? Or only for closed events? Allowing always for now.
+                 deleteEventBtn.disabled = false;
                  exportCsvBtn.disabled = false;
                  exportPdfBtn.disabled = false;
-                 emailReportBtn.disabled = false;
+                 scanFromModalBtn.disabled = event.closed; // Disable scanning for closed events
                  participantSearch.value = ''; // Clear search on open
 
                  // Populate Participants Table
@@ -1336,6 +1361,7 @@
 
         /**
          * Renders the participants table within the modal.
+         * Includes First Aid and Phone columns.
          * @param {Array<object>} participants - Array of participant objects for the event.
          * @param {string} [searchTerm=''] - Optional search term to filter participants.
          */
@@ -1348,7 +1374,12 @@
                  if (!lowerSearchTerm) return true; // Show all if no search term
                  const fullName = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase();
                  const sarNum = (p.sarNumber || '').toLowerCase();
-                 return fullName.includes(lowerSearchTerm) || sarNum.includes(lowerSearchTerm);
+                 const phone = (p.phoneNumber || '').toLowerCase();
+                 const faLevel = (p.firstAidLevel || '').toLowerCase();
+                 return fullName.includes(lowerSearchTerm) ||
+                        sarNum.includes(lowerSearchTerm) ||
+                        phone.includes(lowerSearchTerm) ||
+                        faLevel.includes(lowerSearchTerm);
              });
 
 
@@ -1359,20 +1390,23 @@
                  modalNoParticipants.classList.add('hidden');
                  filteredParticipants.forEach(p => {
                      const row = participantsTableBody.insertRow();
-                     row.className = 'hover:bg-gray-50';
+                     row.className = 'hover:bg-gray-50 text-sm'; // Ensure consistent text size
                      const status = p.checkOutTime
                          ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Checked Out</span>'
                          : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Checked In</span>';
 
                      const totalHrs = calculateHours(p.checkInTime, p.checkOutTime);
 
+                     // Use textContent for safety against XSS if data could be malicious, though unlikely here
                      row.innerHTML = `
-                         <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${p.firstName || 'N/A'} ${p.lastName || ''}</td>
-                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${p.sarNumber || 'N/A'}</td>
-                         <td class="px-4 py-2 whitespace-nowrap text-sm">${status}</td>
-                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${formatDate(p.checkInTime)}</td>
-                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${formatDate(p.checkOutTime)}</td>
-                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${totalHrs}</td>
+                         <td class="px-3 py-2 whitespace-nowrap font-medium text-gray-900">${p.firstName || 'N/A'} ${p.lastName || ''}</td>
+                         <td class="px-3 py-2 whitespace-nowrap text-gray-500">${p.sarNumber || 'N/A'}</td>
+                         <td class="px-3 py-2 whitespace-nowrap text-gray-500">${p.firstAidLevel || 'N/A'}</td>
+                         <td class="px-3 py-2 whitespace-nowrap text-gray-500">${p.phoneNumber || 'N/A'}</td>
+                         <td class="px-3 py-2 whitespace-nowrap">${status}</td>
+                         <td class="px-3 py-2 whitespace-nowrap text-gray-500">${formatDate(p.checkInTime)}</td>
+                         <td class="px-3 py-2 whitespace-nowrap text-gray-500">${formatDate(p.checkOutTime)}</td>
+                         <td class="px-3 py-2 whitespace-nowrap text-gray-500">${totalHrs}</td>
                      `;
                  });
              }
@@ -1385,6 +1419,8 @@
         function closeEventDetailsModal() {
             eventDetailsModal.classList.remove('active');
             currentEditEventId = null; // Clear the current event ID
+            // Also ensure scanner is stopped if modal is closed unexpectedly
+            stopScanner();
         }
 
         /**
@@ -1482,6 +1518,7 @@
 
         /**
          * Generates CSV data for the current event in the modal.
+         * Includes First Aid and Phone.
          */
         async function generateCsv() {
             if (currentEditEventId === null) return;
@@ -1498,8 +1535,8 @@
                     "First Name": p?.firstName || 'N/A',
                     "Last Name": p?.lastName || '',
                     "SAR Number": p?.sarNumber || 'N/A',
-                    "First Aid": p?.firstAidLevel || 'N/A',
-                    "Phone": p?.phoneNumber || 'N/A',
+                    "First Aid": p?.firstAidLevel || 'N/A', // Included
+                    "Phone": p?.phoneNumber || 'N/A',       // Included
                     "Check-In Time": formatDate(p?.checkInTime),
                     "Check-In Lat": getLocationStringForExport(p?.checkInLocation, 'lat'),
                     "Check-In Lon": getLocationStringForExport(p?.checkInLocation, 'lon'),
@@ -1536,18 +1573,18 @@
 
         /**
          * Generates PDF data for the current event in the modal.
-         * Uses jsPDF with basic text layout.
+         * Includes First Aid and Phone. Uses jsPDF with basic text layout.
          */
         async function generatePdf() {
             if (currentEditEventId === null) return;
              hideMessage(adminMessage);
 
-            // Ensure jsPDF is loaded (it's included via CDN)
+            // Ensure jsPDF is loaded
             if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
                  showMessage(adminMessage, "PDF library (jsPDF) not loaded.", "error");
                  return;
             }
-            const { jsPDF } = window.jspdf; // Destructure from the global object
+            const { jsPDF } = window.jspdf;
 
             try {
                 const event = await getItem(EVENTS_STORE_NAME, currentEditEventId);
@@ -1556,18 +1593,17 @@
                      return;
                  }
 
-                const doc = new jsPDF({ orientation: 'landscape' }); // Use landscape for more table width
-                let yPos = 15; // Starting Y position
+                const doc = new jsPDF({ orientation: 'landscape' }); // Landscape needed for more columns
+                let yPos = 15;
                 const pageHeight = doc.internal.pageSize.height;
                 const leftMargin = 10;
                 const rightMargin = doc.internal.pageSize.width - leftMargin;
 
                 function checkAddPage(increment = 5) {
-                    if (yPos + increment > pageHeight - 15) { // Check if space remaining
+                    if (yPos + increment > pageHeight - 15) {
                         doc.addPage();
-                        yPos = 15; // Reset Y on new page
-                        // Optionally repeat headers
-                        // addHeaderRow();
+                        yPos = 15;
+                        addHeaderRow(); // Repeat header on new page
                     } else {
                         yPos += increment;
                     }
@@ -1584,7 +1620,6 @@
                 checkAddPage(5);
                 doc.text(`Status: ${event.closed ? 'Closed' : 'Active'}`, leftMargin, yPos);
                  checkAddPage(5);
-                 // Safely add location
                  let pdfLocationString = 'Location: Not specified';
                  if (event.location && typeof event.location.latitude === 'number' && typeof event.location.longitude === 'number' && !isNaN(event.location.latitude) && !isNaN(event.location.longitude)) {
                      try {
@@ -1592,7 +1627,7 @@
                      } catch { pdfLocationString = 'Location: Invalid data'; }
                  }
                  doc.text(pdfLocationString, leftMargin, yPos);
-                 checkAddPage(10); // Add space before participants
+                 checkAddPage(10);
 
 
                 // --- Participants Data ---
@@ -1600,33 +1635,33 @@
                     doc.setFontSize(12);
                     doc.text("Participants:", leftMargin, yPos);
                     checkAddPage(7);
-                    doc.setFontSize(9);
+                    doc.setFontSize(8); // Slightly smaller font for more columns
 
-                    // Simple Header Row Function
-                    const headers = ["Name", "SAR#", "Check-In", "In Loc", "Check-Out", "Out Loc", "Hours"];
-                    const colWidths = [45, 25, 40, 35, 40, 35, 20]; // Adjusted for landscape
+                    // Adjusted Headers and Widths
+                    const headers = ["Name", "SAR#", "FA", "Phone", "Check-In", "In Loc", "Check-Out", "Out Loc", "Hours"];
+                    const colWidths = [35, 20, 15, 30, 35, 30, 35, 30, 15]; // Adjust widths to fit
 
                     function addHeaderRow() {
-                        doc.setFont(undefined, 'bold'); // Make header bold
+                        doc.setFont(undefined, 'bold');
                         let xPosH = leftMargin;
                         headers.forEach((header, i) => {
                             doc.text(header, xPosH, yPos);
                             xPosH += colWidths[i];
                         });
-                        doc.setFont(undefined, 'normal'); // Reset font style
+                        doc.setFont(undefined, 'normal');
                         checkAddPage(2);
                         doc.setLineWidth(0.2);
-                        doc.line(leftMargin, yPos, rightMargin - 5, yPos); // Line below header
+                        doc.line(leftMargin, yPos, rightMargin - 5, yPos);
                         checkAddPage(5);
                     }
 
-                    addHeaderRow(); // Add header initially
+                    addHeaderRow(); // Initial header
 
                     // Data Rows
                     event.participants.forEach(p => {
-                         checkAddPage(7); // Check space before adding row content
-                         if (yPos === 15 && doc.internal.getNumberOfPages() > 1) { // If new page was added
-                            addHeaderRow(); // Repeat header
+                         checkAddPage(6); // Check space before adding row content
+                         if (yPos === 15 && doc.internal.getNumberOfPages() > 1) {
+                            addHeaderRow(); // Repeat header if new page added
                          }
 
                          let xPos = leftMargin;
@@ -1637,19 +1672,23 @@
                          const inLoc = p?.checkInLocation ? `${getLocationStringForExport(p.checkInLocation, 'lat')}, ${getLocationStringForExport(p.checkInLocation, 'lon')}` : 'N/A';
                          const outLoc = p?.checkOutLocation ? `${getLocationStringForExport(p.checkOutLocation, 'lat')}, ${getLocationStringForExport(p.checkOutLocation, 'lon')}` : 'N/A';
 
-
+                         // Add data cells respecting maxWidth for wrapping
                          doc.text(name, xPos, yPos, { maxWidth: colWidths[0] - 2 });
                          xPos += colWidths[0];
                          doc.text(p?.sarNumber || 'N/A', xPos, yPos);
                          xPos += colWidths[1];
-                         doc.text(checkIn, xPos, yPos);
+                         doc.text(p?.firstAidLevel || 'N/A', xPos, yPos); // FA Level
                          xPos += colWidths[2];
-                         doc.text(inLoc, xPos, yPos, { maxWidth: colWidths[3] - 2 });
+                         doc.text(p?.phoneNumber || 'N/A', xPos, yPos, { maxWidth: colWidths[3] - 2 }); // Phone
                          xPos += colWidths[3];
-                         doc.text(checkOut, xPos, yPos);
+                         doc.text(checkIn, xPos, yPos);
                          xPos += colWidths[4];
-                         doc.text(outLoc, xPos, yPos, { maxWidth: colWidths[5] - 2 });
+                         doc.text(inLoc, xPos, yPos, { maxWidth: colWidths[5] - 2 });
                          xPos += colWidths[5];
+                         doc.text(checkOut, xPos, yPos);
+                         xPos += colWidths[6];
+                         doc.text(outLoc, xPos, yPos, { maxWidth: colWidths[7] - 2 });
+                         xPos += colWidths[7];
                          doc.text(hours, xPos, yPos);
 
                     });
@@ -1670,93 +1709,23 @@
             }
         }
 
-        /**
-         * Generates an email draft using the mailto: protocol.
-         */
-        async function generateEmail() {
-             if (currentEditEventId === null) return;
-             hideMessage(adminMessage);
-
-             try {
-                 const event = await getItem(EVENTS_STORE_NAME, currentEditEventId);
-                 if (!event) {
-                     showMessage(adminMessage, "Event data not found for email.", "warning");
-                     return;
-                 }
-
-                 let body = `SAR Event Report\n`;
-                 body += `--------------------\n`;
-                 body += `Event Name: ${event.eventName || 'N/A'}\n`;
-                 body += `Type: ${event.eventType || 'N/A'}\n`;
-                 body += `Created: ${formatDate(event.creationTime)}\n`;
-                 body += `Status: ${event.closed ? 'Closed' : 'Active'}\n`;
-                  // Safely add location
-                 let emailLocationString = 'Location: Not specified';
-                 if (event.location && typeof event.location.latitude === 'number' && typeof event.location.longitude === 'number' && !isNaN(event.location.latitude) && !isNaN(event.location.longitude)) {
-                     try {
-                         emailLocationString = `Location: ${event.location.latitude.toFixed(4)}, ${event.location.longitude.toFixed(4)}`;
-                     } catch { emailLocationString = 'Location: Invalid data'; }
-                 }
-                 body += `${emailLocationString}\n`;
-                 body += `--------------------\n\n`;
-                 body += `Participants:\n`;
-
-                 if (event.participants && event.participants.length > 0) {
-                     event.participants.forEach(p => {
-                         if (!p) return; // Skip if participant data is null
-                         body += `\n- ${p.firstName || 'N/A'} ${p.lastName || ''} (SAR# ${p.sarNumber || 'N/A'})\n`;
-                         body += `  Check-In: ${formatDate(p.checkInTime)}\n`;
-                         const inLoc = p.checkInLocation ? `${getLocationStringForExport(p.checkInLocation, 'lat')}, ${getLocationStringForExport(p.checkInLocation, 'lon')}` : 'N/A';
-                         body += `  Check-In Loc: ${inLoc}\n`;
-                         body += `  Check-Out: ${formatDate(p.checkOutTime)}\n`;
-                          const outLoc = p.checkOutLocation ? `${getLocationStringForExport(p.checkOutLocation, 'lat')}, ${getLocationStringForExport(p.checkOutLocation, 'lon')}` : 'N/A';
-                         body += `  Check-Out Loc: ${outLoc}\n`;
-                         body += `  Total Hours: ${calculateHours(p.checkInTime, p.checkOutTime)}\n`;
-                     });
-                 } else {
-                     body += `No participants recorded.\n`;
-                 }
-
-                 const subject = `SAR Event Report: ${event.eventName || 'N/A'}`;
-                 const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-                 // Attempt to open the mail client
-                 // Use window.open for potentially better compatibility than window.location.href
-                 if (mailtoLink.length > 2000) { // Check for URL length limits
-                     showMessage(adminMessage, "Report is too long for email link. Please use CSV/PDF export.", "warning");
-                 } else {
-                     window.open(mailtoLink, '_blank');
-                     showMessage(adminMessage, "Attempting to open email client...", "info");
-                 }
-
-
-             } catch (error) {
-                 console.error("Error generating email:", error);
-                 showMessage(adminMessage, `Failed to generate email: ${error}`, 'error');
-             }
-        }
+        // --- generateEmail function removed ---
 
 
         // --- PWA Service Worker Registration ---
         function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
-                // Register sw.js relative to the HTML file's location
                 navigator.serviceWorker.register('./sw.js') // Ensure correct path
                     .then(registration => {
                         console.log('Service Worker registered with scope:', registration.scope);
-                        // Optional: Listen for updates
                         registration.onupdatefound = () => {
                             const installingWorker = registration.installing;
                             if (installingWorker) {
                                 installingWorker.onstatechange = () => {
                                     if (installingWorker.state === 'installed') {
                                         if (navigator.serviceWorker.controller) {
-                                            // New update available
                                             console.log('New content is available; please refresh.');
-                                            // Optionally show a notification to the user
-                                            // showMessage(adminMessage, 'App update available! Refresh page.', 'info', 0);
                                         } else {
-                                            // Content is cached for the first time
                                             console.log('Content is cached for offline use.');
                                         }
                                     }
@@ -1766,7 +1735,6 @@
                     })
                     .catch(error => {
                         console.error('Service Worker registration failed:', error);
-                         // Show non-critical error to user?
                          showMessage(adminMessage, 'Offline mode might not be available (SW registration failed).', 'warning');
                     });
             } else {
@@ -1795,7 +1763,6 @@
                 adminAppSection.classList.remove('hidden');
                 showUserAppBtn.classList.replace('btn-primary', 'btn-secondary');
                 showAdminAppBtn.classList.replace('btn-secondary', 'btn-primary');
-                // Load admin data when switching to it
                 displayEvents(); // Refresh events list
                 switchAdminView('eventsView'); // Default to events view
             });
@@ -1814,34 +1781,31 @@
                 displayEvents(); // Refresh events when switching to the tab
             });
             tabCreateEvent.addEventListener('click', () => switchAdminView('createEventView'));
-            tabScanQR.addEventListener('click', () => switchAdminView('scanQrView'));
+            // Scan QR Tab Listener Removed
             createEventForm.addEventListener('submit', handleCreateEvent);
             getEventLocationBtn.addEventListener('click', handleGetEventLocation);
             eventFilter.addEventListener('change', displayEvents);
-            startScanBtn.addEventListener('click', startScanner);
-            stopScanBtn.addEventListener('click', stopScanner);
+            // startScanBtn removed (now triggered from modal)
+            stopScanBtn.addEventListener('click', stopScanner); // Listener for stop button inside scanner modal
 
-            // Modal Event Listeners
+            // Event Details Modal Listeners
             closeModalBtn.addEventListener('click', closeEventDetailsModal);
             exportCsvBtn.addEventListener('click', generateCsv);
             exportPdfBtn.addEventListener('click', generatePdf);
-            emailReportBtn.addEventListener('click', generateEmail);
+            // Email Button Listener Removed
             closeEventBtn.addEventListener('click', handleCloseEvent);
             deleteEventBtn.addEventListener('click', handleDeleteEvent);
-            // Debounce participant search slightly to avoid excessive DB reads
+            scanFromModalBtn.addEventListener('click', openAndStartScanner); // Listener for new scan button
+
+            // Debounce participant search
             let searchTimeout;
             participantSearch.addEventListener('input', (e) => {
                  clearTimeout(searchTimeout);
                  searchTimeout = setTimeout(async () => {
                      if (currentEditEventId !== null) {
-                         try {
-                             const event = await getItem(EVENTS_STORE_NAME, currentEditEventId);
-                             if (event) {
-                                 renderParticipantsTable(event.participants || [], e.target.value);
-                             }
-                         } catch (err) { console.error("Error searching participants:", err);}
+                         await refreshParticipantsTableInModal(currentEditEventId);
                      }
-                 }, 300); // Wait 300ms after user stops typing
+                 }, 300);
             });
 
 
@@ -1852,9 +1816,13 @@
             });
             confirmCheckoutBtn.addEventListener('click', handleConfirmCheckout);
 
+             // Scanner Modal Close Button Listener
+             closeScannerModalBtn.addEventListener('click', stopScanner);
+
+
              // Close modals if clicking outside the content area
             eventDetailsModal.addEventListener('click', (e) => {
-                if (e.target === eventDetailsModal) { // Check if the click is on the backdrop
+                if (e.target === eventDetailsModal) {
                     closeEventDetailsModal();
                 }
             });
@@ -1864,6 +1832,11 @@
                     userToCheckOut = null;
                 }
             });
+             qrScannerModal.addEventListener('click', (e) => {
+                 if (e.target === qrScannerModal) { // Click on backdrop
+                     stopScanner(); // Close scanner if backdrop is clicked
+                 }
+             });
 
 
             // --- Initial Load ---
@@ -1873,7 +1846,6 @@
                 await openDatabase(); // Open IndexedDB
                 // Initially show user app by default
                 showUserAppBtn.click();
-                // No need to load admin events immediately, wait until user switches
             } catch (error) {
                 console.error("Failed to initialize database:", error);
                  showMessage(adminMessage, `Critical Error: Could not initialize database. Admin features unavailable. ${error}`, 'error', 0);
@@ -1881,16 +1853,13 @@
                  showAdminAppBtn.disabled = true;
                  tabEvents.disabled = true;
                  tabCreateEvent.disabled = true;
-                 tabScanQR.disabled = true;
+                 // Scan tab already removed
             }
 
             registerServiceWorker(); // Register the service worker
         }
 
         // --- Start the app ---
-        // Use 'load' event to ensure all resources including images might be loaded,
-        // although DOMContentLoaded is usually sufficient for script execution.
-        // window.addEventListener('load', initializeApp);
         document.addEventListener('DOMContentLoaded', initializeApp);
 
 
