@@ -1,0 +1,25 @@
+{
+    "name": "SAR Check-In/Out",
+    "short_name": "SAR CheckIn",
+    "description": "Check-in/out system for Search and Rescue teams.",
+    "start_url": ".", // Use "." to start relative to the manifest location
+    "display": "standalone", // Opens like a native app
+    "background_color": "#FF7900", // White background for splash screen
+    "theme_color": "#4f46e5", // Indigo-600 to match the header
+    "orientation": "portrait-primary", // Prefer portrait orientation
+    "icons": [
+      {
+        "src": "images/icon-192.png", // Path relative to index.html/manifest.json
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any maskable" // "any" allows it to be used anywhere, "maskable" helps with adaptive icons
+      },
+      {
+        "src": "images/icon-512.png", // Path relative to index.html/manifest.json
+        "sizes": "512x512",
+        "type": "image/png",
+         "purpose": "any maskable"
+      }
+    ]
+  }
+  
