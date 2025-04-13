@@ -184,12 +184,13 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Location (GPS)</label>
-                        <div class="flex items-center space-x-2">
-                            <input type="text" id="eventLatitude" name="latitude" placeholder="Latitude" readonly class="input-field bg-gray-100 flex-1">
-                            <input type="text" id="eventLongitude" name="longitude" placeholder="Longitude" readonly class="input-field bg-gray-100 flex-1">
-                            <button type="button" id="getEventLocationBtn" class="btn btn-secondary"><i class="fas fa-map-marker-alt"></i> Get</button>
+                        <label class="block text-sm font-medium text-gray-700">Location (Optional)</label>
+                        <p class="text-xs text-gray-500 mb-2">Enter Lat/Lon manually OR use the 'Get Current Location' button.</p>
+                        <div class="flex items-center space-x-2 mb-2">
+                            <input type="number" step="any" id="eventLatitude" name="latitude" placeholder="Latitude (-90 to 90)" class="input-field flex-1" min="-90" max="90">
+                            <input type="number" step="any" id="eventLongitude" name="longitude" placeholder="Longitude (-180 to 180)" class="input-field flex-1" min="-180" max="180">
                         </div>
+                        <button type="button" id="getEventLocationBtn" class="btn btn-secondary w-full"><i class="fas fa-map-marker-alt mr-1"></i> Get Current Location</button>
                         <p id="locationStatus" class="text-xs text-gray-500 mt-1"></p>
                     </div>
                     <button type="submit" class="btn btn-primary w-full">Create Event</button>
@@ -274,24 +275,25 @@
     <script>
         // --- Constants and Global Variables ---
         const DB_NAME = 'SAR_DB';
-        const DB_VERSION = 1;
+        const DB_VERSION = 1; // Increment DB version if schema changes
         const USER_STORE_NAME = 'userProfile'; // For LocalStorage
         const EVENTS_STORE_NAME = 'events';
-        const PARTICIPANTS_STORE_NAME = 'participants'; // Store participants separately for easier querying? Or embed? Embed for now.
+        // const PARTICIPANTS_STORE_NAME = 'participants'; // Keeping participants embedded in events for now
 
         let db; // IndexedDB database instance
         let qrCodeInstance = null; // qrcode.js instance
         let currentEditEventId = null; // Track which event is being viewed/edited in modal
         let videoStream = null; // For QR scanner video
-        let scanInterval = null; // Interval ID for QR scanning
+        let scanInterval = null; // Interval ID for QR scanning (using requestAnimationFrame now)
 
-        // DOM Elements
+        // DOM Elements (Grouped for clarity)
+        // App Sections & Navigation
         const userAppSection = document.getElementById('userApp');
         const adminAppSection = document.getElementById('adminApp');
         const showUserAppBtn = document.getElementById('showUserAppBtn');
         const showAdminAppBtn = document.getElementById('showAdminAppBtn');
 
-        // User App Elements
+        // User App
         const userForm = document.getElementById('userForm');
         const saveUserBtn = document.getElementById('saveUserBtn');
         const generateQrBtn = document.getElementById('generateQrBtn');
@@ -300,22 +302,28 @@
         const qrcodeDiv = document.getElementById('qrcode');
         const userMessage = document.getElementById('userMessage');
 
-        // Admin App Elements
+        // Admin App - General & Tabs
         const adminMessage = document.getElementById('adminMessage');
         const tabEvents = document.getElementById('tabEvents');
         const tabCreateEvent = document.getElementById('tabCreateEvent');
         const tabScanQR = document.getElementById('tabScanQR');
+
+        // Admin App - Events View
         const eventsView = document.getElementById('eventsView');
+        const activeEventsList = document.getElementById('activeEventsList');
+        const pastEventsList = document.getElementById('pastEventsList');
+        const eventFilter = document.getElementById('eventFilter');
+
+        // Admin App - Create Event View
         const createEventView = document.getElementById('createEventView');
-        const scanQrView = document.getElementById('scanQrView');
         const createEventForm = document.getElementById('createEventForm');
         const getEventLocationBtn = document.getElementById('getEventLocationBtn');
         const eventLatitudeInput = document.getElementById('eventLatitude');
         const eventLongitudeInput = document.getElementById('eventLongitude');
         const locationStatus = document.getElementById('locationStatus');
-        const activeEventsList = document.getElementById('activeEventsList');
-        const pastEventsList = document.getElementById('pastEventsList');
-        const eventFilter = document.getElementById('eventFilter');
+
+        // Admin App - Scan QR View
+        const scanQrView = document.getElementById('scanQrView');
         const scanEventSelect = document.getElementById('scanEventSelect');
         const scannerContainer = document.getElementById('scannerContainer');
         const scannerVideo = document.getElementById('scannerVideo');
@@ -325,7 +333,7 @@
         const scanResult = document.getElementById('scanResult');
         const scannerMessage = document.getElementById('scannerMessage');
 
-        // Modal Elements
+        // Event Details Modal
         const eventDetailsModal = document.getElementById('eventDetailsModal');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const modalEventName = document.getElementById('modalEventName');
@@ -339,7 +347,7 @@
         const closeEventBtn = document.getElementById('closeEventBtn');
         const deleteEventBtn = document.getElementById('deleteEventBtn');
 
-        // Checkout Confirm Modal Elements
+        // Checkout Confirm Modal
         const checkoutConfirmModal = document.getElementById('checkoutConfirmModal');
         const checkoutConfirmText = document.getElementById('checkoutConfirmText');
         const cancelCheckoutBtn = document.getElementById('cancelCheckoutBtn');
@@ -362,7 +370,10 @@
             element.classList.remove('hidden');
             if (duration > 0) {
                 setTimeout(() => {
-                    element.classList.add('hidden');
+                    // Check if the message is still the same one before hiding
+                    if (element.textContent === text) {
+                         element.classList.add('hidden');
+                    }
                 }, duration);
             }
         }
@@ -387,7 +398,11 @@
             try {
                 const date = new Date(dateInput);
                 if (isNaN(date.getTime())) return 'N/A'; // Invalid date
-                return date.toLocaleString(); // Adjust format as needed
+                // Use locale-specific format, include time
+                return date.toLocaleString(undefined, {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: 'numeric', minute: '2-digit', hour12: true
+                 });
             } catch (e) {
                 console.error("Error formatting date:", dateInput, e);
                 return 'N/A';
@@ -407,6 +422,7 @@
                 const end = new Date(endTime);
                 if (isNaN(start.getTime()) || isNaN(end.getTime())) return 'N/A';
                 const diffMs = end - start;
+                if (diffMs < 0) return 'Invalid'; // End time before start time
                 const diffHrs = diffMs / (1000 * 60 * 60);
                 return `${diffHrs.toFixed(1)} hrs`;
             } catch (e) {
@@ -422,7 +438,7 @@
         function getCurrentLocation() {
             return new Promise((resolve, reject) => {
                 if (!navigator.geolocation) {
-                    reject(new Error("Geolocation is not supported by your browser."));
+                    reject(new Error("Geolocation is not supported by this browser."));
                     return;
                 }
 
@@ -481,8 +497,9 @@
                         eventStore.createIndex('closed', 'closed', { unique: false });
                         console.log(`Object store ${EVENTS_STORE_NAME} created.`);
                     }
-                    // Note: Participants are stored within the event object for simplicity in this version.
-                    // A separate participant store might be better for very large scale.
+                    // If DB_VERSION increases, add migration logic here based on oldVersion
+                    // const oldVersion = event.oldVersion;
+                    // if (oldVersion < NEW_VERSION) { /* migrate schema */ }
                 };
             });
         }
@@ -580,10 +597,18 @@
                 const store = transaction.objectStore(storeName);
                 let request;
 
-                if (indexName && indexValue !== null) {
-                    const index = store.index(indexName);
-                    // Use IDBKeyRange.only for exact match
-                    request = index.getAll(IDBKeyRange.only(indexValue));
+                if (indexName !== null && indexValue !== null) {
+                    try {
+                        const index = store.index(indexName);
+                        // Use IDBKeyRange.only for exact match
+                        request = index.getAll(IDBKeyRange.only(indexValue));
+                    } catch (e) {
+                         // Handle cases where the index might not exist (e.g., during development/migration)
+                        console.error(`Error accessing index '${indexName}' in store '${storeName}':`, e);
+                        // Fallback to getting all items if index fails? Or reject? Rejecting is safer.
+                        reject(`Error accessing index '${indexName}': ${e.message}`);
+                        return; // Stop execution
+                    }
                 } else {
                     request = store.getAll();
                 }
@@ -762,10 +787,12 @@
             scanEventSelect.innerHTML = '<option value="">-- Select Event --</option>'; // Clear and reset scanner dropdown
 
             try {
+                // Fetch all events first
                 const allEvents = await getAllItems(EVENTS_STORE_NAME);
                 const activeEvents = [];
                 const pastEvents = [];
 
+                // Sort and filter events
                 allEvents.sort((a, b) => new Date(b.creationTime) - new Date(a.creationTime)); // Sort newest first
 
                 allEvents.forEach(event => {
@@ -791,40 +818,74 @@
                 if (listToShow.length === 0) {
                     containerToShow.innerHTML = `<p class="text-gray-500 italic">No ${filterValue} events found.</p>`;
                 } else {
+                    // Create and append cards safely
                     listToShow.forEach(event => {
-                        const eventCard = createEventCard(event);
-                        containerToShow.appendChild(eventCard);
+                        try {
+                            const eventCard = createEventCard(event); // This function now handles potential errors
+                            containerToShow.appendChild(eventCard);
+                        } catch (cardError) {
+                             console.error(`Error creating card for event ID ${event?.id}:`, cardError);
+                             // Optionally display an error card or skip
+                             const errorCard = document.createElement('div');
+                             errorCard.className = 'p-4 border rounded-md shadow-sm bg-red-100 text-red-700';
+                             errorCard.textContent = `Error displaying event: ${event?.eventName || 'Unknown'} (ID: ${event?.id}). ${cardError.message}`;
+                             containerToShow.appendChild(errorCard);
+                        }
                     });
                 }
+                 hideMessage(adminMessage); // Clear any previous loading errors if successful
 
             } catch (error) {
-                console.error("Error fetching events:", error);
-                showMessage(adminMessage, `Error loading events: ${error}`, 'error');
-                activeEventsList.innerHTML = `<p class="text-red-500">Error loading active events.</p>`;
-                pastEventsList.innerHTML = `<p class="text-red-500">Error loading past events.</p>`;
+                console.error("Error fetching or processing events:", error);
+                // Display error in the message area AND in the list area
+                showMessage(adminMessage, `Error loading events: ${error}`, 'error', 0); // Show permanent error
+                activeEventsList.innerHTML = `<p class="text-red-500">Error loading active events. ${error.message}</p>`;
+                pastEventsList.innerHTML = `<p class="text-red-500">Error loading past events. ${error.message}</p>`;
             }
         }
 
         /**
          * Creates an HTML card element for an event.
+         * Includes error handling for missing location data.
          * @param {object} event - The event data object.
          * @returns {HTMLElement} - The event card element.
+         * @throws {Error} If essential event data is missing.
          */
         function createEventCard(event) {
+            // Basic check for essential event data
+             if (!event || typeof event.id === 'undefined' || !event.eventName) {
+                throw new Error("Invalid event data provided to createEventCard.");
+            }
+
             const card = document.createElement('div');
             card.className = 'p-4 border rounded-md shadow-sm bg-white hover:shadow-md transition-shadow duration-200';
             const participantCount = event.participants ? event.participants.length : 0;
             const checkedInCount = event.participants ? event.participants.filter(p => !p.checkOutTime).length : 0;
 
+            // --- Safely access location data ---
+            let locationString = 'Location: Not specified';
+            // Check if location object exists AND latitude/longitude are valid numbers
+            if (event.location && typeof event.location.latitude === 'number' && typeof event.location.longitude === 'number' && !isNaN(event.location.latitude) && !isNaN(event.location.longitude)) {
+                try {
+                    // Use try-catch for toFixed just in case, though type check should prevent it
+                    locationString = `Location: ${event.location.latitude.toFixed(4)}, ${event.location.longitude.toFixed(4)}`;
+                } catch (e) {
+                    console.error(`Error formatting location for event ${event.id}:`, e);
+                    locationString = 'Location: Invalid data'; // Indicate bad data if toFixed fails
+                }
+            }
+            // --- End safe location access ---
+
+
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
                         <h4 class="text-lg font-semibold text-indigo-700">${event.eventName}</h4>
-                        <p class="text-sm text-gray-600">Type: ${event.eventType}</p>
+                        <p class="text-sm text-gray-600">Type: ${event.eventType || 'N/A'}</p>
                         <p class="text-sm text-gray-600">Created: ${formatDate(event.creationTime)}</p>
                         <p class="text-sm text-gray-600">Status: <span class="${event.closed ? 'text-red-600' : 'text-green-600'} font-medium">${event.closed ? 'Closed' : 'Active'}</span></p>
                         <p class="text-sm text-gray-600">Participants: ${participantCount} (${checkedInCount} currently checked in)</p>
-                        ${event.location ? `<p class="text-xs text-gray-500">Location: ${event.location.latitude.toFixed(4)}, ${event.location.longitude.toFixed(4)}</p>` : ''}
+                        <p class="text-xs text-gray-500">${locationString}</p>
                     </div>
                     <button data-event-id="${event.id}" class="view-event-details-btn btn btn-secondary btn-sm">
                        <i class="fas fa-eye mr-1"></i> View Details
@@ -832,9 +893,15 @@
                 </div>
             `;
              // Add event listener to the button
-             card.querySelector('.view-event-details-btn').addEventListener('click', () => {
-                 openEventDetailsModal(event.id);
-             });
+             const viewButton = card.querySelector('.view-event-details-btn');
+             if (viewButton) {
+                 viewButton.addEventListener('click', () => {
+                     openEventDetailsModal(event.id);
+                 });
+             } else {
+                console.warn(`Could not find view button for event card ${event.id}`);
+             }
+
 
             return card;
         }
@@ -848,13 +915,33 @@
             e.preventDefault();
             hideMessage(adminMessage);
 
+            // --- Get and Validate Location Data ---
+            let latitude = eventLatitudeInput.value.trim();
+            let longitude = eventLongitudeInput.value.trim();
+            let locationData = null; // Default to null if no valid location provided
+
+            if (latitude !== '' || longitude !== '') {
+                 // If either field has input, try to validate both
+                 const latNum = parseFloat(latitude);
+                 const lonNum = parseFloat(longitude);
+
+                 if (isNaN(latNum) || isNaN(lonNum) || latNum < -90 || latNum > 90 || lonNum < -180 || lonNum > 180) {
+                      showMessage(adminMessage, 'Invalid Latitude or Longitude entered. Please enter valid numbers within range or leave blank.', 'error');
+                      return; // Stop creation if manually entered coords are invalid
+                 }
+                 // If valid, store the numbers
+                 locationData = {
+                     latitude: latNum,
+                     longitude: lonNum
+                 };
+            }
+             // --- End Location Handling ---
+
+
             const eventData = {
                 eventName: createEventForm.eventName.value.trim(),
                 eventType: createEventForm.eventType.value,
-                location: {
-                    latitude: parseFloat(eventLatitudeInput.value) || null,
-                    longitude: parseFloat(eventLongitudeInput.value) || null,
-                },
+                location: locationData, // Use validated or null location data
                 creationTime: new Date().toISOString(),
                 closed: false,
                 participants: [] // Initialize with empty participants array
@@ -864,19 +951,13 @@
                  showMessage(adminMessage, 'Please provide event name and type.', 'error');
                  return;
             }
-             // Optional: Warn if location is missing, but allow creation
-             if (!eventData.location.latitude || !eventData.location.longitude) {
-                  showMessage(adminMessage, 'Location not set. Event will be created without specific coordinates.', 'warning', 8000);
-             }
-
 
             try {
                 const newEventId = await addItem(EVENTS_STORE_NAME, eventData);
                 showMessage(adminMessage, `Event "${eventData.eventName}" created successfully (ID: ${newEventId}).`, 'success');
                 createEventForm.reset(); // Clear the form
                 locationStatus.textContent = ''; // Clear location status
-                eventLatitudeInput.value = '';
-                eventLongitudeInput.value = '';
+                // Inputs are cleared by reset()
                 await displayEvents(); // Refresh the event list
                 switchAdminView('eventsView'); // Switch back to events view
             } catch (error) {
@@ -887,6 +968,7 @@
 
         /**
          * Gets the current location and populates the event form fields.
+         * This will overwrite any manually entered values.
          */
         async function handleGetEventLocation() {
             locationStatus.textContent = 'Getting location...';
@@ -896,6 +978,7 @@
 
             try {
                 const coords = await getCurrentLocation();
+                // Update the input fields, overwriting manual entry
                 eventLatitudeInput.value = coords.latitude.toFixed(6);
                 eventLongitudeInput.value = coords.longitude.toFixed(6);
                 locationStatus.textContent = 'Location acquired successfully.';
@@ -928,7 +1011,7 @@
             }
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                 showMessage(adminMessage, 'getUserMedia is not supported by your browser.', 'error');
+                 showMessage(adminMessage, 'Camera access (getUserMedia) is not supported by your browser or requires HTTPS.', 'error');
                  return;
             }
 
@@ -943,7 +1026,8 @@
                 };
                 videoStream = await navigator.mediaDevices.getUserMedia(constraints);
                 scannerVideo.srcObject = videoStream;
-                scannerVideo.play(); // Ensure video plays
+                // Ensure video plays, especially on mobile
+                await scannerVideo.play();
 
                  // Wait for video metadata to load to get dimensions
                  scannerVideo.onloadedmetadata = () => {
@@ -952,12 +1036,27 @@
                      qrScannerCanvas.height = scannerVideo.videoHeight;
                      qrScannerCanvas.width = scannerVideo.videoWidth;
                      // Start scanning loop
-                     scanInterval = requestAnimationFrame(tick); // Use requestAnimationFrame for smoother performance
+                     if (!scanInterval) { // Prevent multiple intervals if clicked quickly
+                        scanInterval = requestAnimationFrame(tick); // Use requestAnimationFrame for smoother performance
+                     }
                  };
+                 // Handle cases where metadata might already be loaded
+                 if (scannerVideo.readyState >= scannerVideo.HAVE_METADATA) {
+                     scannerVideo.onloadedmetadata(); // Trigger manually if already loaded
+                 }
+
 
             } catch (err) {
                 console.error("Error accessing camera:", err);
-                 showMessage(adminMessage, `Error accessing camera: ${err.message}. Check permissions.`, 'error');
+                let errMsg = `Error accessing camera: ${err.message}.`;
+                 if (err.name === "NotAllowedError") {
+                     errMsg += " Please grant camera permission.";
+                 } else if (err.name === "NotFoundError") {
+                     errMsg += " No camera found or facingMode='environment' not available.";
+                 } else if (err.name === "NotReadableError") {
+                     errMsg += " Camera might be in use by another application.";
+                 }
+                 showMessage(adminMessage, errMsg, 'error');
                  stopScanner(); // Clean up if start failed
             }
         }
@@ -973,11 +1072,11 @@
             if (videoStream) {
                 videoStream.getTracks().forEach(track => track.stop());
                 videoStream = null;
-                scannerVideo.srcObject = null; // Clear video source
+                if (scannerVideo) scannerVideo.srcObject = null; // Clear video source
             }
             startScanBtn.classList.remove('hidden');
             stopScanBtn.classList.add('hidden');
-            scannerMessage.textContent = 'Scanner stopped.';
+            if (scannerMessage) scannerMessage.textContent = 'Scanner stopped.';
             // Keep scan result visible? Optional.
             // scanResult.textContent = '';
         }
@@ -986,53 +1085,55 @@
          * Scanning loop function called by requestAnimationFrame.
          */
         function tick() {
-            if (scannerVideo.readyState === scannerVideo.HAVE_ENOUGH_DATA) {
-                const canvasContext = qrScannerCanvas.getContext("2d", { willReadFrequently: true }); // Optimize for frequent reads
-                canvasContext.drawImage(scannerVideo, 0, 0, qrScannerCanvas.width, qrScannerCanvas.height);
-                const imageData = canvasContext.getImageData(0, 0, qrScannerCanvas.width, qrScannerCanvas.height);
-
-                try {
-                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                        inversionAttempts: "dontInvert", // Or "attemptBoth" if needed
-                    });
-
-                    if (code) {
-                        // --- QR Code Found ---
-                        scannerMessage.textContent = 'QR Code Detected!';
-                        // Draw bounding box (optional visual feedback)
-                        // drawLine(code.location.topLeftCorner, code.location.topRightCorner, "#FF3B58");
-                        // drawLine(code.location.topRightCorner, code.location.bottomRightCorner, "#FF3B58");
-                        // drawLine(code.location.bottomRightCorner, code.location.bottomLeftCorner, "#FF3B58");
-                        // drawLine(code.location.bottomLeftCorner, code.location.topLeftCorner, "#FF3B58");
-
-                        handleScannedData(code.data); // Process the data
-                        stopScanner(); // Stop scanning after successful detection
-                        return; // Exit the loop for this frame
-                    } else {
-                         scannerMessage.textContent = 'Scanning... Align QR code within the red box';
-                    }
-                } catch (e) {
-                    // jsQR might throw errors on certain inputs
-                    console.error("jsQR error during scanning:", e);
-                    scannerMessage.textContent = 'Error during scan processing.';
+            // Ensure video and stream are still active before proceeding
+            if (!videoStream || !scannerVideo || scannerVideo.readyState < scannerVideo.HAVE_ENOUGH_DATA) {
+                // If stream stopped or video not ready, request next frame and exit
+                if (videoStream && !scanInterval) { // Check if interval needs restarting
+                    scanInterval = requestAnimationFrame(tick);
                 }
+                return;
             }
-            // Continue scanning
-             if (videoStream) { // Only continue if stream is active
-                 scanInterval = requestAnimationFrame(tick);
-             }
-        }
-         // Helper to draw lines on canvas (optional)
-        // function drawLine(begin, end, color) {
-        //     const canvasContext = qrScannerCanvas.getContext("2d");
-        //     canvasContext.beginPath();
-        //     canvasContext.moveTo(begin.x, begin.y);
-        //     canvasContext.lineTo(end.x, end.y);
-        //     canvasContext.lineWidth = 4;
-        //     canvasContext.strokeStyle = color;
-        //     canvasContext.stroke();
-        // }
 
+            // Set interval for next frame *before* processing current one
+            // This ensures continuous scanning even if processing takes time
+            scanInterval = requestAnimationFrame(tick);
+
+
+            const canvasContext = qrScannerCanvas.getContext("2d", { willReadFrequently: true }); // Optimize for frequent reads
+             // Ensure canvas dimensions match video, might change if device rotates or camera changes
+             if (qrScannerCanvas.width !== scannerVideo.videoWidth || qrScannerCanvas.height !== scannerVideo.videoHeight) {
+                qrScannerCanvas.width = scannerVideo.videoWidth;
+                qrScannerCanvas.height = scannerVideo.videoHeight;
+             }
+
+            canvasContext.drawImage(scannerVideo, 0, 0, qrScannerCanvas.width, qrScannerCanvas.height);
+            const imageData = canvasContext.getImageData(0, 0, qrScannerCanvas.width, qrScannerCanvas.height);
+
+            try {
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert", // Or "attemptBoth" if needed
+                });
+
+                if (code && code.data) { // Check if code and data exist
+                    // --- QR Code Found ---
+                    scannerMessage.textContent = 'QR Code Detected!';
+                    // Stop scanner *before* processing to prevent multiple scans of same code
+                    stopScanner();
+                    // Process the data asynchronously
+                    handleScannedData(code.data);
+                    // No need to request another frame here, scanner is stopped
+                    return;
+                } else {
+                     scannerMessage.textContent = 'Scanning... Align QR code within the red box';
+                }
+            } catch (e) {
+                // jsQR might throw errors on certain inputs
+                console.error("jsQR error during scanning:", e);
+                scannerMessage.textContent = 'Error during scan processing.';
+                // Continue scanning? Or stop? Continue for now.
+            }
+
+        }
 
         /**
          * Processes the data obtained from the scanned QR code.
@@ -1043,8 +1144,8 @@
             hideMessage(adminMessage);
             const selectedEventId = parseInt(scanEventSelect.value, 10); // Ensure it's a number
 
-            if (!selectedEventId) {
-                 showMessage(adminMessage, 'Error: No event selected for check-in.', 'error');
+            if (!selectedEventId || isNaN(selectedEventId)) {
+                 showMessage(adminMessage, 'Error: No valid event selected for check-in.', 'error');
                  scanResult.textContent = 'Error: No event selected.';
                  return;
             }
@@ -1151,15 +1252,14 @@
 
              try {
                  const event = await getItem(EVENTS_STORE_NAME, eventId);
-                 if (!event || !event.participants[participantIndex]) {
+                 if (!event || !event.participants || typeof event.participants[participantIndex] === 'undefined') {
                      throw new Error("Event or participant data mismatch during checkout.");
                  }
 
                  // Update the specific participant record
                  event.participants[participantIndex].checkOutTime = new Date().toISOString();
                  event.participants[participantIndex].checkOutLocation = location; // Record checkout location
-                 // Calculate total hours immediately (optional, could be done on report generation)
-                 // event.participants[participantIndex].totalHours = calculateHours(participantData.checkInTime, event.participants[participantIndex].checkOutTime);
+                 // Total hours will be calculated on display/export
 
                  await updateItem(EVENTS_STORE_NAME, event);
                  showMessage(adminMessage, `${participantData.firstName} ${participantData.lastName} checked OUT successfully.`, 'success');
@@ -1195,11 +1295,23 @@
                  }
 
                  // Populate Modal Header and Info
-                 modalEventName.textContent = `${event.eventName} (${event.eventType})`;
+                 modalEventName.textContent = `${event.eventName} (${event.eventType || 'N/A'})`;
+
+                 // --- Safely display location in modal ---
+                 let modalLocationString = 'Location: Not specified';
+                 if (event.location && typeof event.location.latitude === 'number' && typeof event.location.longitude === 'number' && !isNaN(event.location.latitude) && !isNaN(event.location.longitude)) {
+                     try {
+                         modalLocationString = `Location: ${event.location.latitude.toFixed(4)}, ${event.location.longitude.toFixed(4)}`;
+                     } catch (e) {
+                         modalLocationString = 'Location: Invalid data';
+                     }
+                 }
+                 // --- End safe location display ---
+
                  modalEventInfo.innerHTML = `
                      Created: ${formatDate(event.creationTime)} <br>
                      Status: <span class="${event.closed ? 'text-red-600' : 'text-green-600'} font-medium">${event.closed ? 'Closed' : 'Active'}</span> <br>
-                     ${event.location ? `Location: ${event.location.latitude.toFixed(4)}, ${event.location.longitude.toFixed(4)}` : 'Location: Not specified'}
+                     ${modalLocationString}
                  `;
 
                  // Update button states based on event status
@@ -1232,9 +1344,10 @@
              const lowerSearchTerm = searchTerm.toLowerCase().trim();
 
              const filteredParticipants = participants.filter(p => {
+                 if (!p) return false; // Skip null/undefined participants if any exist
                  if (!lowerSearchTerm) return true; // Show all if no search term
-                 const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
-                 const sarNum = p.sarNumber.toLowerCase();
+                 const fullName = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase();
+                 const sarNum = (p.sarNumber || '').toLowerCase();
                  return fullName.includes(lowerSearchTerm) || sarNum.includes(lowerSearchTerm);
              });
 
@@ -1254,8 +1367,8 @@
                      const totalHrs = calculateHours(p.checkInTime, p.checkOutTime);
 
                      row.innerHTML = `
-                         <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${p.firstName} ${p.lastName}</td>
-                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${p.sarNumber}</td>
+                         <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${p.firstName || 'N/A'} ${p.lastName || ''}</td>
+                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${p.sarNumber || 'N/A'}</td>
                          <td class="px-4 py-2 whitespace-nowrap text-sm">${status}</td>
                          <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${formatDate(p.checkInTime)}</td>
                          <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${formatDate(p.checkOutTime)}</td>
@@ -1291,6 +1404,7 @@
                 if (event.closed) {
                     showMessage(adminMessage, "Event is already closed.", "info");
                     closeEventDetailsModal();
+                    await displayEvents(); // Refresh list even if already closed
                     return;
                 }
 
@@ -1298,15 +1412,17 @@
                 let checkedOutCount = 0;
 
                 // Force checkout remaining participants
-                event.participants.forEach(p => {
-                    if (!p.checkOutTime) {
-                        p.checkOutTime = now;
-                        // Optionally record a default location or null
-                        p.checkOutLocation = null; // Or attempt to get current location here? Simpler to null.
-                        // p.totalHours = calculateHours(p.checkInTime, p.checkOutTime); // Calculate hours
-                        checkedOutCount++;
-                    }
-                });
+                if (event.participants && Array.isArray(event.participants)) {
+                    event.participants.forEach(p => {
+                        if (p && !p.checkOutTime) { // Check participant exists
+                            p.checkOutTime = now;
+                            // Optionally record a default location or null
+                            p.checkOutLocation = null; // Or attempt to get current location here? Simpler to null.
+                            checkedOutCount++;
+                        }
+                    });
+                }
+
 
                 event.closed = true;
                 await updateItem(EVENTS_STORE_NAME, event);
@@ -1347,6 +1463,24 @@
         // --- Reporting and Export Logic ---
 
         /**
+         * Safely gets location string for exports.
+         * @param {object | null | undefined} locationObj - The location object {latitude, longitude}.
+         * @param {'lat' | 'lon'} type - Which coordinate to return.
+         * @returns {string} - Formatted coordinate or 'N/A'.
+         */
+        function getLocationStringForExport(locationObj, type) {
+            if (!locationObj || typeof locationObj.latitude !== 'number' || typeof locationObj.longitude !== 'number' || isNaN(locationObj.latitude) || isNaN(locationObj.longitude)) {
+                return 'N/A';
+            }
+            try {
+                return type === 'lat' ? locationObj.latitude.toFixed(6) : locationObj.longitude.toFixed(6);
+            } catch (e) {
+                return 'Invalid';
+            }
+        }
+
+
+        /**
          * Generates CSV data for the current event in the modal.
          */
         async function generateCsv() {
@@ -1355,36 +1489,34 @@
 
             try {
                 const event = await getItem(EVENTS_STORE_NAME, currentEditEventId);
-                if (!event || !event.participants) {
+                if (!event || !event.participants || event.participants.length === 0) {
                     showMessage(adminMessage, "No participant data found for CSV export.", "warning");
                     return;
                 }
 
                 const dataToExport = event.participants.map(p => ({
-                    "First Name": p.firstName,
-                    "Last Name": p.lastName,
-                    "SAR Number": p.sarNumber,
-                    "First Aid": p.firstAidLevel,
-                    "Phone": p.phoneNumber,
-                    "Check-In Time": formatDate(p.checkInTime),
-                    "Check-In Lat": p.checkInLocation?.latitude?.toFixed(6) || 'N/A',
-                    "Check-In Lon": p.checkInLocation?.longitude?.toFixed(6) || 'N/A',
-                    "Check-Out Time": formatDate(p.checkOutTime),
-                    "Check-Out Lat": p.checkOutLocation?.latitude?.toFixed(6) || 'N/A',
-                    "Check-Out Lon": p.checkOutLocation?.longitude?.toFixed(6) || 'N/A',
-                    "Total Hours": calculateHours(p.checkInTime, p.checkOutTime)
+                    "First Name": p?.firstName || 'N/A',
+                    "Last Name": p?.lastName || '',
+                    "SAR Number": p?.sarNumber || 'N/A',
+                    "First Aid": p?.firstAidLevel || 'N/A',
+                    "Phone": p?.phoneNumber || 'N/A',
+                    "Check-In Time": formatDate(p?.checkInTime),
+                    "Check-In Lat": getLocationStringForExport(p?.checkInLocation, 'lat'),
+                    "Check-In Lon": getLocationStringForExport(p?.checkInLocation, 'lon'),
+                    "Check-Out Time": formatDate(p?.checkOutTime),
+                    "Check-Out Lat": getLocationStringForExport(p?.checkOutLocation, 'lat'),
+                    "Check-Out Lon": getLocationStringForExport(p?.checkOutLocation, 'lon'),
+                    "Total Hours": calculateHours(p?.checkInTime, p?.checkOutTime)
                 }));
 
-                if (dataToExport.length === 0) {
-                     showMessage(adminMessage, "No participants to export.", "info");
-                     return;
-                }
 
                 const csv = Papa.unparse(dataToExport);
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel compatibility
                 const link = document.createElement("a");
                 const url = URL.createObjectURL(blob);
-                const filename = `SAR_Event_${event.eventName.replace(/\s+/g, '_')}_${event.id}.csv`;
+                // Sanitize event name for filename
+                const safeEventName = (event.eventName || 'Event').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                const filename = `SAR_Event_${safeEventName}_${event.id}.csv`;
 
                 link.setAttribute("href", url);
                 link.setAttribute("download", filename);
@@ -1404,15 +1536,14 @@
 
         /**
          * Generates PDF data for the current event in the modal.
-         * NOTE: jsPDF autoTable plugin would make this much nicer, but avoiding extra dependencies for now.
-         * This will be a very basic text-based PDF.
+         * Uses jsPDF with basic text layout.
          */
         async function generatePdf() {
             if (currentEditEventId === null) return;
              hideMessage(adminMessage);
 
             // Ensure jsPDF is loaded (it's included via CDN)
-            if (typeof window.jspdf === 'undefined') {
+            if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
                  showMessage(adminMessage, "PDF library (jsPDF) not loaded.", "error");
                  return;
             }
@@ -1425,80 +1556,111 @@
                      return;
                  }
 
-                const doc = new jsPDF();
+                const doc = new jsPDF({ orientation: 'landscape' }); // Use landscape for more table width
                 let yPos = 15; // Starting Y position
+                const pageHeight = doc.internal.pageSize.height;
+                const leftMargin = 10;
+                const rightMargin = doc.internal.pageSize.width - leftMargin;
 
-                // Event Header
+                function checkAddPage(increment = 5) {
+                    if (yPos + increment > pageHeight - 15) { // Check if space remaining
+                        doc.addPage();
+                        yPos = 15; // Reset Y on new page
+                        // Optionally repeat headers
+                        // addHeaderRow();
+                    } else {
+                        yPos += increment;
+                    }
+                }
+
+                 // --- Event Header ---
                 doc.setFontSize(16);
-                doc.text(`SAR Event Report: ${event.eventName}`, 10, yPos);
-                yPos += 8;
+                doc.text(`SAR Event Report: ${event.eventName || 'N/A'}`, leftMargin, yPos);
+                checkAddPage(8);
                 doc.setFontSize(10);
-                doc.text(`Type: ${event.eventType}`, 10, yPos);
-                yPos += 5;
-                doc.text(`Created: ${formatDate(event.creationTime)}`, 10, yPos);
-                yPos += 5;
-                doc.text(`Status: ${event.closed ? 'Closed' : 'Active'}`, 10, yPos);
-                 yPos += 5;
-                 if (event.location) {
-                     doc.text(`Location: ${event.location.latitude.toFixed(4)}, ${event.location.longitude.toFixed(4)}`, 10, yPos);
-                     yPos += 5;
+                doc.text(`Type: ${event.eventType || 'N/A'}`, leftMargin, yPos);
+                checkAddPage(5);
+                doc.text(`Created: ${formatDate(event.creationTime)}`, leftMargin, yPos);
+                checkAddPage(5);
+                doc.text(`Status: ${event.closed ? 'Closed' : 'Active'}`, leftMargin, yPos);
+                 checkAddPage(5);
+                 // Safely add location
+                 let pdfLocationString = 'Location: Not specified';
+                 if (event.location && typeof event.location.latitude === 'number' && typeof event.location.longitude === 'number' && !isNaN(event.location.latitude) && !isNaN(event.location.longitude)) {
+                     try {
+                         pdfLocationString = `Location: ${event.location.latitude.toFixed(4)}, ${event.location.longitude.toFixed(4)}`;
+                     } catch { pdfLocationString = 'Location: Invalid data'; }
                  }
-                 yPos += 5; // Add some space before participants
+                 doc.text(pdfLocationString, leftMargin, yPos);
+                 checkAddPage(10); // Add space before participants
 
 
-                // Participants Data (Basic Table - Manual Layout)
+                // --- Participants Data ---
                 if (event.participants && event.participants.length > 0) {
                     doc.setFontSize(12);
-                    doc.text("Participants:", 10, yPos);
-                    yPos += 7;
+                    doc.text("Participants:", leftMargin, yPos);
+                    checkAddPage(7);
                     doc.setFontSize(9);
 
-                    // Simple Header Row
-                     const headers = ["Name", "SAR#", "Check-In", "Check-Out", "Hours"];
-                     const colWidths = [50, 25, 40, 40, 20]; // Adjust as needed
-                     let xPos = 10;
-                     headers.forEach((header, i) => {
-                         doc.text(header, xPos, yPos);
-                         xPos += colWidths[i];
-                     });
-                     yPos += 5;
-                     doc.setLineWidth(0.2);
-                     doc.line(10, yPos, 190, yPos); // Line below header
-                     yPos += 5;
+                    // Simple Header Row Function
+                    const headers = ["Name", "SAR#", "Check-In", "In Loc", "Check-Out", "Out Loc", "Hours"];
+                    const colWidths = [45, 25, 40, 35, 40, 35, 20]; // Adjusted for landscape
 
+                    function addHeaderRow() {
+                        doc.setFont(undefined, 'bold'); // Make header bold
+                        let xPosH = leftMargin;
+                        headers.forEach((header, i) => {
+                            doc.text(header, xPosH, yPos);
+                            xPosH += colWidths[i];
+                        });
+                        doc.setFont(undefined, 'normal'); // Reset font style
+                        checkAddPage(2);
+                        doc.setLineWidth(0.2);
+                        doc.line(leftMargin, yPos, rightMargin - 5, yPos); // Line below header
+                        checkAddPage(5);
+                    }
+
+                    addHeaderRow(); // Add header initially
 
                     // Data Rows
                     event.participants.forEach(p => {
-                         if (yPos > 270) { // Check for page break
-                             doc.addPage();
-                             yPos = 15; // Reset Y position on new page
-                             // Optional: Repeat headers on new page
+                         checkAddPage(7); // Check space before adding row content
+                         if (yPos === 15 && doc.internal.getNumberOfPages() > 1) { // If new page was added
+                            addHeaderRow(); // Repeat header
                          }
-                         xPos = 10;
-                         const name = `${p.firstName} ${p.lastName}`;
-                         const checkIn = formatDate(p.checkInTime);
-                         const checkOut = formatDate(p.checkOutTime);
-                         const hours = calculateHours(p.checkInTime, p.checkOutTime);
 
-                         doc.text(name, xPos, yPos, { maxWidth: colWidths[0] - 2 }); // Use maxWidth for wrapping
+                         let xPos = leftMargin;
+                         const name = `${p?.firstName || 'N/A'} ${p?.lastName || ''}`;
+                         const checkIn = formatDate(p?.checkInTime);
+                         const checkOut = formatDate(p?.checkOutTime);
+                         const hours = calculateHours(p?.checkInTime, p?.checkOutTime);
+                         const inLoc = p?.checkInLocation ? `${getLocationStringForExport(p.checkInLocation, 'lat')}, ${getLocationStringForExport(p.checkInLocation, 'lon')}` : 'N/A';
+                         const outLoc = p?.checkOutLocation ? `${getLocationStringForExport(p.checkOutLocation, 'lat')}, ${getLocationStringForExport(p.checkOutLocation, 'lon')}` : 'N/A';
+
+
+                         doc.text(name, xPos, yPos, { maxWidth: colWidths[0] - 2 });
                          xPos += colWidths[0];
-                         doc.text(p.sarNumber, xPos, yPos);
+                         doc.text(p?.sarNumber || 'N/A', xPos, yPos);
                          xPos += colWidths[1];
                          doc.text(checkIn, xPos, yPos);
                          xPos += colWidths[2];
-                         doc.text(checkOut, xPos, yPos);
+                         doc.text(inLoc, xPos, yPos, { maxWidth: colWidths[3] - 2 });
                          xPos += colWidths[3];
+                         doc.text(checkOut, xPos, yPos);
+                         xPos += colWidths[4];
+                         doc.text(outLoc, xPos, yPos, { maxWidth: colWidths[5] - 2 });
+                         xPos += colWidths[5];
                          doc.text(hours, xPos, yPos);
 
-                         yPos += 7; // Move to next line (adjust spacing as needed)
                     });
                 } else {
-                     doc.text("No participants recorded for this event.", 10, yPos);
+                     doc.text("No participants recorded for this event.", leftMargin, yPos);
                 }
 
 
                 // Save the PDF
-                 const filename = `SAR_Event_${event.eventName.replace(/\s+/g, '_')}_${event.id}.pdf`;
+                 const safeEventName = (event.eventName || 'Event').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                 const filename = `SAR_Event_${safeEventName}_${event.id}.pdf`;
                 doc.save(filename);
                  showMessage(adminMessage, "PDF file generated.", "success");
 
@@ -1524,34 +1686,49 @@
 
                  let body = `SAR Event Report\n`;
                  body += `--------------------\n`;
-                 body += `Event Name: ${event.eventName}\n`;
-                 body += `Type: ${event.eventType}\n`;
+                 body += `Event Name: ${event.eventName || 'N/A'}\n`;
+                 body += `Type: ${event.eventType || 'N/A'}\n`;
                  body += `Created: ${formatDate(event.creationTime)}\n`;
                  body += `Status: ${event.closed ? 'Closed' : 'Active'}\n`;
-                 if (event.location) {
-                     body += `Location: ${event.location.latitude.toFixed(4)}, ${event.location.longitude.toFixed(4)}\n`;
+                  // Safely add location
+                 let emailLocationString = 'Location: Not specified';
+                 if (event.location && typeof event.location.latitude === 'number' && typeof event.location.longitude === 'number' && !isNaN(event.location.latitude) && !isNaN(event.location.longitude)) {
+                     try {
+                         emailLocationString = `Location: ${event.location.latitude.toFixed(4)}, ${event.location.longitude.toFixed(4)}`;
+                     } catch { emailLocationString = 'Location: Invalid data'; }
                  }
+                 body += `${emailLocationString}\n`;
                  body += `--------------------\n\n`;
                  body += `Participants:\n`;
 
                  if (event.participants && event.participants.length > 0) {
                      event.participants.forEach(p => {
-                         body += `\n- ${p.firstName} ${p.lastName} (SAR# ${p.sarNumber})\n`;
+                         if (!p) return; // Skip if participant data is null
+                         body += `\n- ${p.firstName || 'N/A'} ${p.lastName || ''} (SAR# ${p.sarNumber || 'N/A'})\n`;
                          body += `  Check-In: ${formatDate(p.checkInTime)}\n`;
+                         const inLoc = p.checkInLocation ? `${getLocationStringForExport(p.checkInLocation, 'lat')}, ${getLocationStringForExport(p.checkInLocation, 'lon')}` : 'N/A';
+                         body += `  Check-In Loc: ${inLoc}\n`;
                          body += `  Check-Out: ${formatDate(p.checkOutTime)}\n`;
+                          const outLoc = p.checkOutLocation ? `${getLocationStringForExport(p.checkOutLocation, 'lat')}, ${getLocationStringForExport(p.checkOutLocation, 'lon')}` : 'N/A';
+                         body += `  Check-Out Loc: ${outLoc}\n`;
                          body += `  Total Hours: ${calculateHours(p.checkInTime, p.checkOutTime)}\n`;
-                         // Add location if needed, might make email long
                      });
                  } else {
                      body += `No participants recorded.\n`;
                  }
 
-                 const subject = `SAR Event Report: ${event.eventName}`;
+                 const subject = `SAR Event Report: ${event.eventName || 'N/A'}`;
                  const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
                  // Attempt to open the mail client
-                 window.location.href = mailtoLink;
-                 showMessage(adminMessage, "Attempting to open email client...", "info");
+                 // Use window.open for potentially better compatibility than window.location.href
+                 if (mailtoLink.length > 2000) { // Check for URL length limits
+                     showMessage(adminMessage, "Report is too long for email link. Please use CSV/PDF export.", "warning");
+                 } else {
+                     window.open(mailtoLink, '_blank');
+                     showMessage(adminMessage, "Attempting to open email client...", "info");
+                 }
+
 
              } catch (error) {
                  console.error("Error generating email:", error);
@@ -1563,18 +1740,38 @@
         // --- PWA Service Worker Registration ---
         function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js') // sw.js should be in the same directory
+                // Register sw.js relative to the HTML file's location
+                navigator.serviceWorker.register('./sw.js') // Ensure correct path
                     .then(registration => {
                         console.log('Service Worker registered with scope:', registration.scope);
+                        // Optional: Listen for updates
+                        registration.onupdatefound = () => {
+                            const installingWorker = registration.installing;
+                            if (installingWorker) {
+                                installingWorker.onstatechange = () => {
+                                    if (installingWorker.state === 'installed') {
+                                        if (navigator.serviceWorker.controller) {
+                                            // New update available
+                                            console.log('New content is available; please refresh.');
+                                            // Optionally show a notification to the user
+                                            // showMessage(adminMessage, 'App update available! Refresh page.', 'info', 0);
+                                        } else {
+                                            // Content is cached for the first time
+                                            console.log('Content is cached for offline use.');
+                                        }
+                                    }
+                                };
+                            }
+                        };
                     })
                     .catch(error => {
                         console.error('Service Worker registration failed:', error);
                          // Show non-critical error to user?
-                         // showMessage(adminMessage, 'Offline mode might not be available (SW registration failed).', 'warning');
+                         showMessage(adminMessage, 'Offline mode might not be available (SW registration failed).', 'warning');
                     });
             } else {
                  console.warn('Service workers are not supported in this browser.');
-                 // showMessage(adminMessage, 'Offline mode not fully supported by this browser.', 'warning');
+                 showMessage(adminMessage, 'Offline mode not fully supported by this browser.', 'warning');
             }
         }
 
@@ -1599,7 +1796,7 @@
                 showUserAppBtn.classList.replace('btn-primary', 'btn-secondary');
                 showAdminAppBtn.classList.replace('btn-secondary', 'btn-primary');
                 // Load admin data when switching to it
-                displayEvents();
+                displayEvents(); // Refresh events list
                 switchAdminView('eventsView'); // Default to events view
             });
 
@@ -1612,7 +1809,10 @@
             clearUserFormBtn.addEventListener('click', clearUserForm);
 
             // Admin App Event Listeners
-            tabEvents.addEventListener('click', () => switchAdminView('eventsView'));
+            tabEvents.addEventListener('click', () => {
+                switchAdminView('eventsView');
+                displayEvents(); // Refresh events when switching to the tab
+            });
             tabCreateEvent.addEventListener('click', () => switchAdminView('createEventView'));
             tabScanQR.addEventListener('click', () => switchAdminView('scanQrView'));
             createEventForm.addEventListener('submit', handleCreateEvent);
@@ -1628,15 +1828,20 @@
             emailReportBtn.addEventListener('click', generateEmail);
             closeEventBtn.addEventListener('click', handleCloseEvent);
             deleteEventBtn.addEventListener('click', handleDeleteEvent);
-            participantSearch.addEventListener('input', async (e) => {
-                if (currentEditEventId !== null) {
-                    try {
-                        const event = await getItem(EVENTS_STORE_NAME, currentEditEventId);
-                        if (event) {
-                            renderParticipantsTable(event.participants || [], e.target.value);
-                        }
-                    } catch (err) { console.error("Error searching participants:", err);}
-                }
+            // Debounce participant search slightly to avoid excessive DB reads
+            let searchTimeout;
+            participantSearch.addEventListener('input', (e) => {
+                 clearTimeout(searchTimeout);
+                 searchTimeout = setTimeout(async () => {
+                     if (currentEditEventId !== null) {
+                         try {
+                             const event = await getItem(EVENTS_STORE_NAME, currentEditEventId);
+                             if (event) {
+                                 renderParticipantsTable(event.participants || [], e.target.value);
+                             }
+                         } catch (err) { console.error("Error searching participants:", err);}
+                     }
+                 }, 300); // Wait 300ms after user stops typing
             });
 
 
@@ -1674,13 +1879,20 @@
                  showMessage(adminMessage, `Critical Error: Could not initialize database. Admin features unavailable. ${error}`, 'error', 0);
                  // Disable admin features if DB fails?
                  showAdminAppBtn.disabled = true;
+                 tabEvents.disabled = true;
+                 tabCreateEvent.disabled = true;
+                 tabScanQR.disabled = true;
             }
 
             registerServiceWorker(); // Register the service worker
         }
 
         // --- Start the app ---
+        // Use 'load' event to ensure all resources including images might be loaded,
+        // although DOMContentLoaded is usually sufficient for script execution.
+        // window.addEventListener('load', initializeApp);
         document.addEventListener('DOMContentLoaded', initializeApp);
+
 
     </script>
 
